@@ -2,7 +2,7 @@
 This repository contains examples of analytical work completed by Sylvia Onchaga and is provided as a sample of my coding, statistical analysis, and reproducible research workflow.
 
 ## Repository Contents
-### 1. Zoetis Mastitis Incidence Analysis
+### 1. Bovine Mastitis Incidence Analysis
 This project demonstrates an epidemiological analysis workflow for estimating disease incidence and identifying risk factors in a cohort study.
 
 Key skills demonstrated:
