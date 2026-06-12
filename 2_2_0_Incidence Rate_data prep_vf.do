@@ -1,5 +1,5 @@
 *******************************************************************************
-* Author: Sylvia Onchaga, onchagasylvia@gmail.com
+* Author: Sylvia Onchaga
 * Purpose: To estimate the incidence of Bovine Mastitis and determine the risk factors
 * Date of creation: 17/12/2025
 ********************************************************************************
@@ -45,18 +45,18 @@ set maxvar 5000
 	graph set window fontface "Arial"
 
 	
-	*Set up globals for laterite colors
-	global laterite_red "218 48 44"
-	global laterite_green "208 238 214"
-	global laterite_teal "125 217 186"
-	global laterite_orange "242 115 23"
-	global laterite_gray "36 31 33"
-	global laterite_ltred "236 151 149"
-	global laterite_ltgreen "231 246 234"
-	global laterite_ltteal "190 236 220"
-	global laterite_ltorange "248 185 134"
-	global laterite_ltgray "144 142 143"
-	global laterite_dkgreen "78 114 85"
+	*Set up globals for graph colors
+	global code_red "218 48 44"
+	global code_green "208 238 214"
+	global code_teal "125 217 186"
+	global code_orange "242 115 23"
+	global code_gray "36 31 33"
+	global code_ltred "236 151 149"
+	global code_ltgreen "231 246 234"
+	global code_ltteal "190 236 220"
+	global code_ltorange "248 185 134"
+	global code_ltgray "144 142 143"
+	global code_dkgreen "78 114 85"
 
 	
 	
