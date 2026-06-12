@@ -1,5 +1,5 @@
 *******************************************************************************
-* Author: Sylvia Onchaga, onchagasylvia@gmail.com
+* Author: Sylvia Onchaga
 * Purpose: To prepare cow characteristics variables used in the risk factor analysis
 * Date of creation: 15/01/2026
 ********************************************************************************
@@ -12,7 +12,7 @@ set maxvar 5000
 
 
 	*Paths
-	global root "G:/Shared drives/PROJECT FOLDER/Data"
+	global root "G:/Shared drives/PROJECT_FOLDER/Data"
 	cd "${root}/4_Analysis"
 	
 	
