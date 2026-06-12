@@ -1,5 +1,5 @@
 *******************************************************************************
-* Author: Sylvia Onchaga, onchagasylvia@gmail.com
+* Author: Sylvia Onchaga
 * Purpose: To describe farmer characteristics at baseline
 * Date of creation: 28/07/2025
 * Updated: Dropped treatment/control split; Overall + Country columns only.
