@@ -1,0 +1,33 @@
+# Mastitis Incidence Analysis
+This project demonstrates a longitudinal epidemiological analysis workflow used to estimate the incidence of bovine mastitis and identify associated risk factors in smallholder dairy systems.
+
+## Analytical Workflow
+### 1. Baseline Characteristics
+* 0.0_Farmer Baseline Characteristics data prep.do
+* 1.0_Farmer Characteristics_vf.do
+* 2.0_Cow Characteristics.do
+
+These scripts prepare and summarize farmer, farm, and cow baseline characteristics.
+### 2. Incidence Estimation
+* 2_2_0_Incidence Rate_data prep_vf.do
+* 2_2_1_Incidence_Rate_Estimation_vf.do
+
+These scripts prepare longitudinal follow-up data and estimate bovine mastitis incidence rates.
+### 3. Risk Factor Analysis
+* 4_6_0_Risk_Factors_data prep_v2.do
+* 4_6_1_Risk_Factors for Bovine Mastitis_vf.do
+
+This document provides a summary of the analytical workflow and the sequence in which the scripts should be executed.
+### Supporting Documentation
+* Manuscript 2_Do files Guide.docx
+
+## Software
+Stata
+
+
+## Data Availability
+Original study data are not included because they are confidential and subject to data-sharing restrictions. 
+The repository is intended to demonstrate analytical workflow, code organization, statistical programming, and reproducible research workflow.
+
+## Author Contribution
+All code and analyses included in this repository were developed by Sylvia Onchaga.
