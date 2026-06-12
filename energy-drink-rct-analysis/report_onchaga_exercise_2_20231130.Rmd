@@ -1,0 +1,469 @@
+---
+title: "report_onchaga_exercise_2_20231130"
+author: 'Candidate ID: #504'
+date: "30/11/2023"
+output:
+  pdf_document: default
+  html_document: default
+knitr: root.dir:"/Users/Sylvia/Documents/PhD assignment"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r care1, echo=FALSE, message=FALSE, warning=FALSE, include=F}
+
+#Load packages required for the data management and analysis in exercise 2
+library(ggplot2)
+
+library(tidyverse)
+library(gridExtra)
+library(plotly)
+library(labelled)
+library(haven)
+
+library(emmeans) # contrast analysis
+library(psych)
+library(knitr)
+library(stringr)
+library(latexpdf)
+library(latex2exp)
+library(latexdiffr)
+library(tinytex)
+library(olsrr)
+library(parameters)
+
+library(questionr)
+
+library(gtsummary)
+library(knitr)
+library(shiny)
+library(DataExplorer) 
+library(lubridate)
+
+library(shinydashboard)
+
+library(purrr)
+library(CompQuadForm)
+library(rstatix) 
+
+```
+
+
+# Effect of Sugar and Caffeine Variations in Energy Drinks on Reaction time and Blood Sugar Levels
+
+## Introduction
+
+This report outlines the findings of a randomized controlled trial designed to assess changes in participant reaction time and blood sugar levels following intake of energy drinks with varying levels of sugar and caffeine. 
+
+### Trial design
+
+The trial comprised three groups, each assigned a specific type of energy drink - drink A, drink B, and drink C. The primary outcomes of interest, reaction time and blood sugar levels were measured before and after the consumption of the energy drinks. 
+
+### Trial Participants and Group Assignment
+
+Participants were recruited October 2023. Baseline characteristics including gender, height in cm and weight in kg, and self-assessment of sleepiness or wakefulness were recorded at the time of recruitment. Participants were then randomly assigned to the trial groups to ensure that the groups are collectively similar in baseline characteristics. Group 1 participants consumed drink A, while those in group 2 and 3 consumed drink B, and drink C, respectively.
+
+
+```{r graz1,echo=FALSE, message=FALSE, warning=FALSE, include=F}
+
+#Read the data into R for analysis
+raw_data = readxl::read_excel("/Users/Sylvia/Documents/PhD assignment/20231023_energydrinks.xlsx") 
+
+
+#To visualize the data and inspect the variable names and order use the codes in lines 64-65
+#View(raw_data)
+#names(raw_data)
+
+# Check the dataset format (wide or long), using the unique participant id 
+raw_data %>% 
+  group_by(id) %>% 
+  mutate(number = n()) %>%
+  ungroup() %>% filter(number == 2)     #No duplicates by participant ID, therefore the data is likely in wide format
+
+#
+```
+
+
+```{r graz2,echo=FALSE, message=FALSE, warning=FALSE, include=F}
+
+#Add value labels and variable labels to raw data, but first check the variable types in the data.
+#The value labels are provided in the PhD assignment guide
+
+str(raw_data)     #To check variable types
+attributes(raw_data)
+
+
+data_0 = raw_data %>%
+  set_value_labels(group = c(
+    "Drink A" = 1,
+    "Drink B" = 2,
+    "Drink C" = 3), 
+    gender = c(
+      "Female" = 1,
+      "Male" = 2),
+    sle_wak = c(
+      "Sleepy" = "1",
+      "Awake" = "2",
+      "Energetic" = "3")
+  ) %>%
+   set_variable_labels(
+     id = "Participant Unique ID",
+     group = "Energy drink consumed",
+     gender = "Participant gender",
+     height = "Participant height in cm",
+     weight = "Participant weight in kg",
+     sle_wak = "Sleepiness/wakefulness",
+    sug_level_bef = "Blood sugar level before energy drink intake",
+    rec_time_bef = "Reaction time before energy drink intake",
+    sug_level_aft = "Blood sugar level after energy drink intake",
+    rec_time_aft = "Reaction time after energy drink intake"
+    )
+ 
+```
+
+## Study Findings
+
+
+```{r graz3,echo=FALSE, message=FALSE, warning=FALSE, include=F}
+
+# Start by generating missing variables necessary in the analysis - BMI, difference in reaction time and and in blood sugar level
+
+# BMI is estimated by dividing weight in kilograms by the square of height measured in metres (m).
+# From the phd assignment guide, height is measure in centimetres (cm). Convert the height to metres by diving by 100, when computing BMI
+
+## Explore the two weight and height variable, before creating BMI index - Check for missing and extreme values
+data_1 = complete(data_0) 
+nrow(data_1):
+  nrow(data_0)              #No missing data for all variables
+
+summary(data_0$weight)      #No extreme values noted
+summary(data_0$height)
+
+
+data_2 = data_0 %>%
+  mutate(bmi= weight/ (height/100)^2,
+         rec_time_ch = rec_time_aft - rec_time_bef,
+         sug_level_ch = sug_level_aft - sug_level_bef,
+         bmi_cat = cut(bmi, breaks = c(0, 18.5, 25, 30, Inf), labels = c("Underweight", "Normal Weight", "Overweight", "Obese"))) %>%
+   set_variable_labels(
+    bmi = "Participant BMI continuous",
+    bmi_cat = "Participant BMI",
+    rec_time_ch = "Change in Reaction time",
+    sug_level_ch = "Change in Blood sugar level"
+    )
+
+```
+
+### Baseline characteristics of the participants
+
+An overview of the trial participants and some of their baseline characteristics is presented in the Table 1. Proportions expressed as percentages, counts, and total number of participants (denoted with N) are reported.
+
+A total of 102 participants took part in the trial, with an equal distribution across the three groups. Females comprised 50% of the participants, constituting at least 44% in each group. Approximately two-thirds of the participants had normal weight (66.7%), and a substantial proportion (21.6%) were classified as overweight (BMI > 25 kg/m2). Participants showed an almost even distribution in self-assessment of sleepiness or wakefulness, with 38.2% rating themselves awake, followed by 32.4% rating themselves sleepy, and the remaining participants considering themselves energetic. No significant differences were observed across groups in terms of the baseline measures. 
+
+#### Table 1
+```{r graz4,echo=FALSE, message=FALSE, warning=FALSE, include=T}
+# We summarize the baseline characteristics and test for differences across the three trial groups.
+# Non-parametric tests were used because of their robustness and they do not depend on prior knowledge of the variable distribution.
+# The limitation of these tests however is the reduced power to detect significant differences. 
+# In an ideal trial, the type of tests should be considered when determining the sample size of the trial. 
+
+result_1 = data_2 %>%
+  select(gender, bmi_cat, group, sle_wak) %>%
+  unlabelled() %>%
+tbl_summary(
+    by = group,
+    #include = ,
+   #type= bmi ~ "continuous2",
+  #  statistic = list(all_categorical() ~ "{p}% ({n}/{N})",
+  statistic = list(all_categorical() ~ "{p}% ({n})",
+                     all_continuous2() ~ c("{median} ({min} - {max})", "{mean} ({sd})")),
+    missing="ifany",
+    digit = ~c(1,1,1)
+      )  %>%
+  
+  add_p() %>%
+  #add_ci() %>%
+  add_overall() %>%
+  bold_labels() %>%
+  bold_labels() %>%
+  italicize_levels() 
+result_1 %>% 
+  modify_header(
+    list(label~"")
+  )
+
+#show_header_names(result_2)
+```
+
+### Reaction time and blood sugar level before consumption of the energy drinks
+
+Table 2 displays an overview of the blood sugar level and reaction time among participants before consumption of the energy drinks. Medians, ranges (lowest - highest values), means and standard deviations (SD) are reported. Medians, representing the middle value when participant measures are arranged from lowest to highest have been used instead of means to describe the primary outcomes before and after intake due to their conservative nature.
+
+At baseline, blood sugar level ranged from 87.6 to 91.7 with half of the participants collectively and in each group having a concentration exceeding 90.0. The reaction time ranged from 170.2 to 194.2, and half of the participants recorded a reaction time of more than 172.55 collectively, or at least 172.4 across groups. In both outcomes, no significant differences were observed across groups before the consumption of energy drinks.
+
+#### Table 2
+```{r graz5,echo=FALSE, message=FALSE, warning=FALSE, include=T}
+
+# Summarizing the primary outcome measures at baseline
+
+result_2 = data_2 %>%
+  select(sug_level_bef,rec_time_bef, group) %>%
+  unlabelled() %>%
+tbl_summary(
+    by = group,
+    #include = ,
+    type= c(sug_level_bef,rec_time_bef) ~ "continuous2",
+    #statistic = list(all_categorical() ~ "{p}% ({n}/{N})",
+    statistic = list(all_categorical() ~ "c{p}% (n={n})",
+                     all_continuous2() ~ c("{median} ({min} - {max})", "{mean} ({sd})")),
+    missing="ifany",
+    digit = ~c(2,1,1)
+      )  %>%
+  
+  add_p() %>%
+  #add_ci() %>%
+  add_overall() %>%
+  bold_labels() %>%
+  bold_labels() %>%
+  italicize_levels()
+result_2 %>% 
+  modify_header(
+    list(label~""))
+```
+
+
+### Reaction time and blood sugar level after consumption of the energy drinks
+
+The table 3 provides an overview of the blood sugar level and reaction time recorded among participants after intake of the energy drinks. 
+
+A widening range in the blood sugar levels was observed, from 87.6 - 91.7 before intake to 62.9 - 102.7 following the intake of energy drinks. However the overall median blood sugar level remained stable. Significant differences in the median blood sugar level were observed, with group 1 having the lowest median concentration of blood sugar (66.1), followed by group 2 with a median concentration of 90.2, and finally group 3 with a median concentration of 100.7.
+
+Similarly, significant differences were noted across groups in the median reaction time after intake of the energy drinks. The nedian reaction time was highest in group 2 (169.6), followed by group 1 (143.2) and lastly, group 3 (122.9). The overall median reaction time decreased from 172.55 to 143.2 following consumption of the energy drinks, with individual participant values ranging from 120.1 to 186.3.
+
+#### Table 3
+```{r graz6,echo=FALSE, message=FALSE, warning=FALSE, include=T}
+
+result_3 = data_2 %>%
+  select(sug_level_aft,rec_time_aft, group) %>%
+  unlabelled() %>%
+tbl_summary(
+    by = group,
+    #include = ,
+    type= c(sug_level_aft,rec_time_aft) ~ "continuous2",
+    statistic = list(all_categorical() ~ "{p}% ({n}/{N})",
+                     all_continuous2() ~ c("{median} ({min} - {max})", "{mean} ({sd})")),
+    missing="ifany",
+    digit = ~c(1,1,1)
+      )  %>%
+  
+  add_p() %>%
+  #add_ci() %>%
+  add_overall() %>%
+  bold_labels() %>%
+  bold_labels() %>%
+  italicize_levels()
+result_3 %>% 
+  modify_header(
+    list(label~""))
+```
+
+
+
+```{r graz7_0,echo=FALSE, message=FALSE, warning=FALSE, include= F}
+
+# Displaying before and after measures side by side for group 1
+
+data_2_bef = data_2 %>%
+    filter(group == 1) %>%          #Filter for group 1 only
+  dplyr::select(sug_level_bef,rec_time_bef, group) %>%
+  #mutate(group= as.character(group)) %>%
+  mutate(id= seq_along(sug_level_bef))
+colnames(data_2_bef)= c("Blood sugar level", "Reaction time", "group", "id")
+
+
+data_2_aft = data_2 %>%
+  filter(group == 1) %>%          #Filter for group 1 only
+  dplyr::select(sug_level_aft,rec_time_aft, group) %>%
+  #mutate(group = as.character(group)) %>%
+  mutate(id = seq_along(sug_level_aft)) 
+colnames(data_2_aft) = c("Blood sugar level", "Reaction time", "group", "id")
+
+data_3 = bind_rows("Before" = data_2_bef,"After" = data_2_aft, .id = "period" )
+
+
+
+result_4 = data_3 %>%
+  unlabelled() %>%
+  
+  tbl_strata(
+    strata = group,
+    .tbl_fun =
+      ~ .x %>%
+        tbl_summary(
+    by = period,
+    include = -id ,
+    type= c("Blood sugar level", "Reaction time") ~ "continuous2",
+    statistic = list(all_categorical() ~ "{p}% ({n}/{N})",
+                     all_continuous2() ~ c("{median} ({min} - {max})", "{mean} ({sd})")),
+    missing="ifany",
+      )  %>%
+  
+    add_p(test = list(
+       # Perform wilcox paired-test for all variables
+          all_continuous() ~ "paired.wilcox.test"),
+        group = id
+    ) %>%
+  
+  bold_p() %>%
+  bold_labels() %>%
+  bold_labels() %>%
+  italicize_levels()
+  )  
+result_4 %>% 
+  modify_header(
+    list(label~""))
+
+```
+
+
+
+```{r graz7,echo=FALSE, message=FALSE, warning=FALSE, include= F}
+
+# All groups - before and after measures presented side by side
+
+data_2_bef = data_2 %>%
+  dplyr::select(sug_level_bef,rec_time_bef, group) %>%
+  #mutate(group= as.character(group)) %>%
+  mutate(id= seq_along(sug_level_bef))
+colnames(data_2_bef)= c("Blood sugar level", "Reaction time", "group", "id")
+
+
+data_2_aft = data_2 %>%
+  dplyr::select(sug_level_aft,rec_time_aft, group) %>%
+  #mutate(group = as.character(group)) %>%
+  mutate(id = seq_along(sug_level_aft)) 
+colnames(data_2_aft) = c("Blood sugar level", "Reaction time", "group", "id")
+
+data_3 = bind_rows("Before" = data_2_bef,"After" = data_2_aft, .id = "period" )
+
+
+
+result_4 = data_3 %>%
+  unlabelled() %>%
+  
+  tbl_strata(
+    strata = group,
+    .tbl_fun =
+      ~ .x %>%
+        tbl_summary(
+    by = period,
+    include = -id ,
+    type= c("Blood sugar level", "Reaction time") ~ "continuous2",
+    statistic = list(all_categorical() ~ "{p}% ({n}/{N})",
+                     all_continuous2() ~ c("{median} ({min} - {max})", "{mean} ({sd})")),
+    missing="ifany",
+      )  %>%
+  
+    add_p(test = list(
+       # Perform wilcox paired-test for all variables
+          all_continuous() ~ "paired.wilcox.test"),
+        group = id
+    ) %>%
+  
+  bold_p() %>%
+  bold_labels() %>%
+  bold_labels() %>%
+  italicize_levels()
+  )  
+result_4 %>% 
+  modify_header(
+    list(label~""))
+
+```
+
+### Within Group change in reaction time with respect to change in blood sugar levels: Group 1 - "Drink A"
+
+
+```{r graz8,echo=FALSE, message=FALSE, warning=FALSE, include=F}
+
+# This chunk aims to assess the change in reaction time with respect to baseline characteristics of the participant including the trial group variable as a covariate, using multivariable linear regression
+
+graz_reg1= data_2 %>%
+  mutate(bmi_cat2 = cut(bmi, breaks = c(0, 18.5, 25, Inf), labels = c("Underweight", "Normal Weight", "Overweight"))) %>%
+  set_variable_labels(
+    bmi_cat2 = "Participant BMI") %>%
+  select(rec_time_ch, bmi_cat2, group, sug_level_ch, sle_wak,  rec_time_bef) %>% 
+  unlabelled()
+  
+
+reac_reg= lm(rec_time_ch ~ bmi_cat2 + group + sug_level_ch + sle_wak +  rec_time_bef ,data = graz_reg1) 
+
+reac_reg %>% 
+  tbl_regression()
+
+
+# To check the model fit, extract the R-squared
+# summary(reac_reg)
+
+# To check the distribution of the residuals
+# ols_test_normality(reac_reg)
+```
+
+The analysis in Table 4, reveals a positive relationship between how much the reaction time changes with and how much the blood sugar level changes over time among participants who consumed energy drink A. As the blood sugar level changes, the reaction time tends to change in the same direction. Specifically, for each unit increase in the absolute change in blood sugar level, the reaction time increases by 1 point. This relationship is statistically significant, with a p-value less than 0.001, suggesting that it is very unlikely to be due to random chance. If the blood sugar level was to increase by 10 units, the reaction time would increase by 4.3 units.
+
+The analysis and interpretation takes into account other factors like the participant's BMI, sleepiness or wakefulness, and their baseline reaction time. Even after accounting for these factors, the observed relationship between changes in blood sugar level and reaction time remains significant. Notably, no significant association was found between Group A participant's BMI, sleepiness or wakefulness, baseline reaction time and the change in reaction time. There is no evidence that these factors influence how reaction time changed in participants who consumed energy drink A.
+
+
+#### Table 4
+```{r graz9,echo=FALSE, message=FALSE, warning=FALSE, include=T}
+
+# This chunk aims to assess the change in reaction time with respect to baseline characteristics of the participants assigned to group 1 corresponding to Drink A, using multivariable linear regression
+
+graz_reg2 = data_2 %>%   
+  filter(group == 1) %>%
+  mutate(bmi_cat2 = cut(bmi, breaks = c(0, 18.5, 25, Inf), labels = c("Underweight", "Normal Weight", "Overweight"))) %>%
+  set_variable_labels(
+    bmi_cat2 = "Participant BMI") %>%
+  select(rec_time_ch, sug_level_ch, rec_time_bef, sle_wak, bmi_cat2) %>% 
+  unlabelled()
+
+
+reac_reg2= lm(rec_time_ch ~ sug_level_ch + rec_time_bef + sle_wak + bmi_cat2 , data = graz_reg2) 
+
+reac_reg2 %>% tbl_regression()
+
+
+# To check model fit
+# summary(reac_reg2)
+
+# To check the distribution of residuals
+# ols_test_normality(reac_reg2)
+```
+
+
+
+#### Predicted change in reaction time for an increase in blood sugar level of 10 is 4.31.
+
+```{r graz10,echo=FALSE, message=FALSE, warning=FALSE, include=T}
+#### Predict change in reaction time for sugar level of 10
+
+#Define new observation for blood sugar level change
+sugar_10 = data.frame(sug_level_ch = 10, bmi_cat2 = "Underweight", sle_wak = "Sleepy", rec_time_bef = 0)
+
+#Use fitted model to predict points value
+predict(reac_reg2, sugar_10)
+```
+
+
+
+
+```{r graz11,echo=FALSE, message=FALSE, warning=FALSE, include=T}
+#Save data files
+save(data_2, file = "20231130_energydrinks_wide.Rdata")
+save(data_3, file = "20231130_energydrinks_long.Rdata")
+
+```
+
